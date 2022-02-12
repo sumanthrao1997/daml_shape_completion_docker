@@ -1,0 +1,21 @@
+diff --git a/init.cu b/init.cu
+index 12113de..5d43070 100644
+--- a/init.cu
++++ b/init.cu
+@@ -23,11 +23,14 @@ printf( "Assert failed %d:%d at %s:%d\n", blockIdx.x, threadIdx.x,  __FILE__, __
+ 
+ 
+ LUA_EXTERNC DLL_EXPORT int luaopen_libcunnx(lua_State *L);
+-
++// Before luaopen_libcunnx.
++#include "VolumetricUpSamplingNearest.cu"
+ int luaopen_libcunnx(lua_State *L)
+ {
+   lua_newtable(L);
+-  
++  // In luaopen_libcunnx.
++  cunn_VolumetricUpSamplingNearest_init(L);
++  // NOTE: cunn_ AND NOT cunnx_!
+   cunnx_SoftMaxTree_init(L);
+   cunnx_BlockSparse_init(L);
+   cunnx_WindowSparse_init(L);

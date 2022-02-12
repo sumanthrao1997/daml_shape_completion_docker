@@ -1,0 +1,12 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index f24f1730..7e33b17f 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -239,6 +239,7 @@ message("-- Building with C++${CMAKE_CXX_STANDARD}")
+ 
+ # Eigen.
+ # Eigen delivers Eigen3Config.cmake since v3.3.3
++INCLUDE_DIRECTORIES ( "$ENV{EIGEN3_INCLUDE_DIR}" )
+ find_package(Eigen3 3.3 REQUIRED)
+ if (Eigen3_FOUND)
+   message("-- Found Eigen version ${Eigen3_VERSION}: ${Eigen3_DIR}")

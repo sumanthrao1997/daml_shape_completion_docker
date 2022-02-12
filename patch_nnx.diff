@@ -1,0 +1,13 @@
+diff --git a/init.lua b/init.lua
+index 69f2c83..8ecf78c 100644
+--- a/init.lua
++++ b/init.lua
+@@ -62,7 +62,7 @@ require('nnx.SpatialRadialMatching')
+ require('nnx.SpatialMaxSampling')
+ require('nnx.SpatialColorTransform')
+ require('nnx.PixelSort')
+-
++require('nnx.VolumetricUpSamplingNearest')
+ -- other modules
+ require('nnx.FunctionWrapper')
+ 
