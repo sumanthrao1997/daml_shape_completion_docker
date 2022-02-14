@@ -131,17 +131,22 @@ RUN git clone --depth 1 https://github.com/gflags/gflags \
     && make install
 
 
+
+
+# FIXME: PLEASE UPDATE WITH INITIAL CACHE LAYERS
+# Install Eigen from source
+RUN rm -rf /eigen && git clone --depth 1 https://gitlab.com/libeigen/eigen.git -b 3.3.9 \
+    && cd eigen \
+    && mkdir -p build \
+    && cd build \
+    && cmake .. && make -j install
+
 RUN apt install -y libgoogle-glog-dev \
     libsuitesparse-dev \
-    libatlas-base-dev \
-    && git clone https://ceres-solver.googlesource.com/ceres-solver
-
-COPY ceres_patch.diff /ceres-solver/
-
-RUN cd ceres-solver \
-    && git apply ceres_patch.diff  
-
-RUN mkdir ceres-bin \
+    libatlas-base-dev
+    
+RUN git clone https://ceres-solver.googlesource.com/ceres-solver -b 1.14.0 \
+    && mkdir ceres-bin \
     && cd ceres-bin \
     && cmake ../ceres-solver \
     && make -j \
