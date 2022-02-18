@@ -12,36 +12,93 @@ RUN rm /etc/apt/sources.list.d/cuda.list
 # Install essentials
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
+    # nvidia-cuda-toolkit \
     build-essential \
     ccache \
     cmake \
+    cython \
     git \
     hdf5-tools \
-    libhdf5-serial-dev \
-    libreadline-dev \
-    # nvidia-cuda-toolkit \
-    unzip \
-    wget \
-    libgtk2.0-dev \
-    pkg-config \
+    libatlas-base-dev \
     libavcodec-dev \
     libavformat-dev \
-    libswscale-dev \
-    libtbb2 \
-    libtbb-dev \
-    libjpeg-dev \
-    libpng-dev \
-    libtiff-dev \
-    libjasper-dev \
+    libavutil-dev \
+    libboost-dev \
     libdc1394-22-dev \
+    libdouble-conversion-dev \
+    libexpat1-dev \
+    libfontconfig-dev \
+    libfreetype6-dev \
+    libgdal-dev \
+    libglew-dev \
+    libgoogle-glog-dev \
+    libgtk2.0-dev \
+    libhdf5-serial-dev \
+    libjasper-dev \
+    libjpeg-dev \
+    libjsoncpp-dev \
+    liblz4-dev \
+    liblzma-dev \
+    libnetcdf-dev  \
+    libogg-dev \
+    libpng-dev \
+    libqt5opengl5-dev \
+    libqt5x11extras5-dev \
+    libreadline-dev \
+    libsqlite3-dev \
+    libsuitesparse-dev \
+    libswscale-dev \
+    libtbb-dev \
+    libtbb2 \
+    libtheora-dev \
+    libtiff-dev \
+    libtiff-dev \
+    libxml2-dev \
+    libxt-dev \
+    pkg-config \
+    python-collada \
+    python-h5py \
+    python-numpy \
+    python-opencv \
+    qtbase5-dev \
+    qttools5-dev \
+    unzip \
+    wget \
+    zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# installing latest cmake
+RUN wget http://www.cmake.org/files/v3.6/cmake-3.6.0.tar.gz \
+    && tar -xvzf cmake-3.6.0.tar.gz \
+    && cd cmake-3.6.0 \
+    && ./configure \
+    && make \
+    && make install
+
 # Install Eigen from source
-RUN git clone --depth 1 https://gitlab.com/libeigen/eigen.git -b 3.3 \
+RUN rm -rf /eigen && git clone --depth 1 https://gitlab.com/libeigen/eigen.git -b 3.3.9 \
     && cd eigen \
     && mkdir -p build \
     && cd build \
     && cmake .. && make -j install
+
+# installing gflags need to install thuis
+RUN git clone --depth 1 https://github.com/gflags/gflags \
+    && cd gflags \
+    && mkdir build \
+    && cd build \
+    && cmake .. \
+    && make -j \
+    && make install
+
+# Ceres
+RUN git clone https://ceres-solver.googlesource.com/ceres-solver -b 1.14.0 \
+    && mkdir ceres-bin \
+    && cd ceres-bin \
+    && cmake ../ceres-solver \
+    && make -j \
+    && make install
+    && rm -rf /var/lib/apt/lists/*
 
 # Install lua
 RUN mkdir lua_build \
@@ -76,7 +133,6 @@ RUN cd distro \
     && git clone https://github.com/nicholas-leonard/cunnx.git \
     && cp ./torch-volumetric-nnup/cuda/VolumetricUpSamplingNearest.cu ./cunnx/ 
 
-
 # installing lua--nnx
 COPY patch_nnx.diff /distro/lua---nnx/
 RUN . /distro/install/bin/torch-activate && cd /distro/lua---nnx \ 
@@ -88,13 +144,6 @@ COPY patch_cunnx.diff /distro/cunnx/
 RUN . /distro/install/bin/torch-activate && cd /distro/cunnx/ \
     && git apply patch_cunnx.diff \
     && luarocks make rocks/cunnx-scm-1.rockspec
-# install python libs
-RUN apt install -y python-pip \
-    python-numpy \
-    python-h5py \
-    cython \
-    python-collada \
-    python-opencv
 
 RUN git clone --branch voxel_centers https://github.com/davidstutz/PyMCubes.git \
     && cd PyMCubes \
@@ -110,47 +159,12 @@ RUN git clone --depth 1 -b 2.4 https://github.com/opencv/opencv.git \
     && make -j \
     && make install
 
-# install ceres
-RUN apt remove cmake -y
+#install vtk from source
+RUN wget https://www.vtk.org/files/release/7.1/VTK-7.1.1.tar.gz --no-check-certificate \
+    && tar -xzvf VTK-7.1.1.tar.gz && cd VTK-7.1.1 \ 
+    && mkdir build && cd build && cmake .. \
+    && make -j$(nproc --all) && make install
 
-# installing latest cmake
-RUN wget http://www.cmake.org/files/v3.6/cmake-3.6.0.tar.gz \
-    && tar -xvzf cmake-3.6.0.tar.gz \
-    && cd cmake-3.6.0 \
-    && ./configure \
-    && make \
-    && make install
-
-# installing gflags need to install thuis
-RUN git clone --depth 1 https://github.com/gflags/gflags \
-    && cd gflags \
-    && mkdir build \
-    && cd build \
-    && cmake .. \
-    && make -j \
-    && make install
-
-
-
-
-# FIXME: PLEASE UPDATE WITH INITIAL CACHE LAYERS
-# Install Eigen from source
-RUN rm -rf /eigen && git clone --depth 1 https://gitlab.com/libeigen/eigen.git -b 3.3.9 \
-    && cd eigen \
-    && mkdir -p build \
-    && cd build \
-    && cmake .. && make -j install
-
-RUN apt install -y libgoogle-glog-dev \
-    libsuitesparse-dev \
-    libatlas-base-dev
-    
-RUN git clone https://ceres-solver.googlesource.com/ceres-solver -b 1.14.0 \
-    && mkdir ceres-bin \
-    && cd ceres-bin \
-    && cmake ../ceres-solver \
-    && make -j \
-    && make install
-
-
-
+# Now finally try to build the ugliest shit ever
+RUN git clone --depth 1 https://github.com/davidstutz/daml-shape-completion.git \
+    && cd daml-shape-completion && ls
