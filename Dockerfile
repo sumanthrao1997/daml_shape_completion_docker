@@ -56,10 +56,10 @@ RUN apt-get update \
     libxml2-dev \
     libxt-dev \
     pkg-config \
-    python-collada \
-    python-h5py \
-    python-numpy \
-    python-opencv \
+    # python-collada \
+    # python-h5py \
+    # python-numpy \
+    # python-opencv \
     qtbase5-dev \
     qttools5-dev \
     unzip \
@@ -67,37 +67,7 @@ RUN apt-get update \
     zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# installing latest cmake
-RUN wget http://www.cmake.org/files/v3.6/cmake-3.6.0.tar.gz \
-    && tar -xvzf cmake-3.6.0.tar.gz \
-    && cd cmake-3.6.0 \
-    && ./configure \
-    && make \
-    && make install
 
-# Install Eigen from source
-RUN rm -rf /eigen && git clone --depth 1 https://gitlab.com/libeigen/eigen.git -b 3.3.9 \
-    && cd eigen \
-    && mkdir -p build \
-    && cd build \
-    && cmake .. && make -j install
-
-# installing gflags need to install thuis
-RUN git clone --depth 1 https://github.com/gflags/gflags \
-    && cd gflags \
-    && mkdir build \
-    && cd build \
-    && cmake .. \
-    && make -j \
-    && make install
-
-# Ceres
-RUN git clone https://ceres-solver.googlesource.com/ceres-solver -b 1.14.0 \
-    && mkdir ceres-bin \
-    && cd ceres-bin \
-    && cmake ../ceres-solver \
-    && make -j \
-    && make install
 
 # Install lua
 RUN mkdir lua_build \
@@ -117,6 +87,12 @@ RUN wget --no-check-certificate https://luarocks.org/releases/luarocks-3.8.0.tar
 
 # Install torch distro
 RUN git clone https://github.com/torch/distro.git && cd distro && bash install-deps &&  ./install.sh && ./update.sh
+
+# installing additional python dependencies
+RUN apt-get install -y python-collada \
+    python-h5py \
+    python-numpy \
+    python-opencv
 
 #install torch -hd5
 RUN . /distro/install/bin/torch-activate && git clone --depth 1 https://github.com/deepmind/torch-hdf5 \
@@ -144,11 +120,6 @@ RUN . /distro/install/bin/torch-activate && cd /distro/cunnx/ \
     && git apply patch_cunnx.diff \
     && luarocks make rocks/cunnx-scm-1.rockspec
 
-RUN git clone --branch voxel_centers https://github.com/davidstutz/PyMCubes.git \
-    && cd PyMCubes \
-    && python setup.py build \
-    && python setup.py install
-
 # install opencv
 RUN git clone --depth 1 -b 2.4 https://github.com/opencv/opencv.git \
     && cd opencv \
@@ -164,6 +135,50 @@ RUN wget https://www.vtk.org/files/release/7.1/VTK-7.1.1.tar.gz --no-check-certi
     && mkdir build && cd build && cmake .. \
     && make -j$(nproc --all) && make install
 
-# Now finally try to build the ugliest shit ever
+# installing  cmake3.6 for installing eigen 3.3
+RUN wget http://www.cmake.org/files/v3.6/cmake-3.6.0.tar.gz \
+    && tar -xvzf cmake-3.6.0.tar.gz \
+    && cd cmake-3.6.0 \
+    && ./configure \
+    && make \
+    && make install
+
+# Install Eigen from source
+RUN rm -rf /eigen && git clone --depth 1 https://gitlab.com/libeigen/eigen.git -b 3.3.9 \
+    && cd eigen \
+    && mkdir -p build \
+    && cd build \
+    && cmake .. && make -j install
+
+# installing gflags need to install thuis
+RUN git clone --depth 1 https://github.com/gflags/gflags \
+    && cd gflags \
+    && mkdir build \
+    && cd build \
+    && cmake .. \
+    && make -j \
+    && make install
+
+# installing Ceres-Solver
+RUN git clone https://ceres-solver.googlesource.com/ceres-solver -b 1.14.0 \
+    && mkdir ceres-bin \
+    && cd ceres-bin \
+    && cmake ../ceres-solver \
+    && make -j \
+    && make install
+
+# installing PyMcubes
+RUN apt update && apt upgrade -y \
+    && apt install python-dev -y \
+    && git clone --branch voxel_centers https://github.com/davidstutz/PyMCubes.git \
+    && cd PyMCubes \
+    && python setup.py build \
+    && python setup.py install
+
+RUN 
+# Now finally try to build the daml shape completion
 RUN git clone --depth 1 https://github.com/davidstutz/daml-shape-completion.git \
+    # installing ,missing lua requirements (only json was missing when checked inside docker)
+    . /distro/install/bin/torch-activate \
+    && luarocks install json
     && cd daml-shape-completion && ls
