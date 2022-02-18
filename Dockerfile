@@ -98,7 +98,6 @@ RUN git clone https://ceres-solver.googlesource.com/ceres-solver -b 1.14.0 \
     && cmake ../ceres-solver \
     && make -j \
     && make install
-    && rm -rf /var/lib/apt/lists/*
 
 # Install lua
 RUN mkdir lua_build \
