@@ -175,10 +175,96 @@ RUN apt update && apt upgrade -y \
     && python setup.py build \
     && python setup.py install
 
-RUN 
 # Now finally try to build the daml shape completion
 RUN git clone --depth 1 https://github.com/davidstutz/daml-shape-completion.git \
     # installing ,missing lua requirements (only json was missing when checked inside docker)
-    . /distro/install/bin/torch-activate \
+    && . /distro/install/bin/torch-activate \
     && luarocks install json
-    && cd daml-shape-completion && ls
+
+# Patch this shit
+COPY engelmann.diff /daml-shape-completion/
+RUN cd daml-shape-completion && git apply engelmann.diff
+
+
+#install openblas
+RUN wget -O openblas-v0.2.20.zip http://github.com/xianyi/OpenBLAS/archive/v0.2.20.zip \
+    && unzip openblas-v0.2.20.zip \
+    && cd OpenBLAS-0.2.20 \
+    && mkdir build \
+    && cd build \
+    && cmake .. \
+    && make -j \
+    && make install
+
+# install suitesparse
+RUN ldconfig \
+    && wget http://faculty.cse.tamu.edu/davis/SuiteSparse/SuiteSparse-4.5.6.tar.gz \
+    && tar -xvzf SuiteSparse-4.5.6.tar.gz \
+    && cd SuiteSparse \
+    && CUDA_PATH_='which nvcc 2>/dev/null | sed "s/\/bin\/nvcc//"' \
+    && make -j \
+    && make install
+
+# building shape priors in engelmann directories
+
+RUN cd daml-shape-completion/engelmann/external/viz \
+    # && git diff .\
+    && mkdir build \
+    && cd build \
+    && cmake .. \
+    && make -j \
+    && make install
+
+# TODO: Move this up or NACHO will cut my fingers
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y \
+    libboost-all-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# # Patch in cmake_modules and CMakeLists to include csparse lib
+COPY engelmanncmake.diff /daml-shape-completion/
+RUN cd daml-shape-completion \
+    && git apply engelmanncmake.diff
+
+# now come back and install the engelmann library
+RUN cd daml-shape-completion/engelmann \
+    && mkdir build \
+    && cd build \
+    && pwd \
+    && cmake .. \
+    && cmake .. \
+    && make -j
+
+# building mesh-evaluation
+RUN cd daml-shape-completion/ \
+    && git clone https://github.com/davidstutz/mesh-evaluation.git \
+    && cd mesh-evaluation \
+    && mkdir build \
+    && cd build \
+    && cmake .. \
+    && make -j
+
+# building shape priors
+RUN cd daml-shape-completion/ \
+    && git clone https://github.com/VisualComputingInstitute/ShapePriors_GCPR16.git
+
+# patch for correcting eigen in viz.h and cuda runtime environment off
+COPY shapeprior.diff /daml-shape-completion/ShapePriors_GCPR16/
+# # first build viz
+RUN cd daml-shape-completion/ShapePriors_GCPR16/ \
+    && git apply shapeprior.diff \ 
+    && cd external/viz \
+    && mkdir build \
+    && cd build \
+    && cmake .. \
+    && cmake .. \
+    && make -j \
+    && make install
+
+# build shape priors
+RUN cd daml-shape-completion/ShapePriors_GCPR16/ \
+    && mkdir build \
+    && cd build \
+    && cmake ..\
+    && cmake .. -DCMAKE_BUILD_TYPE=Release \
+    && make -j

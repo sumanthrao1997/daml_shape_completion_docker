@@ -1,0 +1,91 @@
+diff --git a/engelmann/CMakeLists.txt b/engelmann/CMakeLists.txt
+index f92635a..7b2763a 100644
+--- a/engelmann/CMakeLists.txt
++++ b/engelmann/CMakeLists.txt
+@@ -20,6 +20,7 @@ project(GCPR_shape_priors)
+ 
+ add_compile_options(-std=c++0x -fPIC -msse3 -Wall -fopenmp -Wno-unused-variable)
+ set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules/" ${CMAKE_MODULE_PATH})
++set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
+ 
+ # Find Packages
+ find_package(Glog REQUIRED)
+@@ -32,6 +33,7 @@ message("SuiteSparse include dirs:")
+ message("  cholmod: ${CHOLMOD_INCLUDE_DIR}")
+ message("  csparse: ${CSPARSE_INCLUDE_DIR}")
+ include_directories(${CHOLMOD_INCLUDE_DIR})
++include_directories(${CSPARSE_INCLUDE_DIR})
+ 
+ find_package(Ceres REQUIRED)
+ message("Ceres include dir: ${Ceres_INCLUDE_DIRS}")
+@@ -79,7 +81,7 @@ add_library(GVL SHARED ${SOURCES})
+ target_link_libraries(GVL ${GLOG_LIBRARIES} ${OpenCV_LIBRARIES} ${VTK_LIBRARIES} ${Ceres_LIBRARIES} ${MORE_LIBS} ${VIZ_LIBRARIES})
+ 
+ add_executable(KittiShapePrior "apps/kitti_shapeprior.cpp" )
+-target_link_libraries(KittiShapePrior GVL ${Boost_LIBRARIES} ${GLOG_LIBRARIES} ${OpenCV_LIBRARIES} ${Ceres_LIBRARIES} ${CHOLMOD_LIBRARY} ${MORE_LIBS} ${VIZ_LIBRARIES})
++target_link_libraries(KittiShapePrior GVL ${Boost_LIBRARIES} ${GLOG_LIBRARIES} ${OpenCV_LIBRARIES} ${Ceres_LIBRARIES} ${CHOLMOD_LIBRARY} ${MORE_LIBS} ${CSPARSE_LIBRARY} ${VIZ_LIBRARIES})
+ 
+ add_executable(ShapeNetShapePrior "apps/shapenet_shapeprior.cpp" )
+-target_link_libraries(ShapeNetShapePrior GVL ${Boost_LIBRARIES} ${GLOG_LIBRARIES} ${OpenCV_LIBRARIES} ${Ceres_LIBRARIES} ${CHOLMOD_LIBRARY} ${MORE_LIBS} ${VIZ_LIBRARIES})
++target_link_libraries(ShapeNetShapePrior GVL ${Boost_LIBRARIES} ${GLOG_LIBRARIES} ${OpenCV_LIBRARIES} ${Ceres_LIBRARIES} ${CHOLMOD_LIBRARY} ${MORE_LIBS} ${CSPARSE_LIBRARY} ${VIZ_LIBRARIES})
+diff --git a/engelmann/cmake_modules/FindSuiteSparse.cmake b/engelmann/cmake_modules/FindSuiteSparse.cmake
+index eaad0f8..9a41f3b 100644
+--- a/engelmann/cmake_modules/FindSuiteSparse.cmake
++++ b/engelmann/cmake_modules/FindSuiteSparse.cmake
+@@ -1,30 +1,35 @@
+ FIND_PATH(CHOLMOD_INCLUDE_DIR NAMES cholmod.h amd.h camd.h
+   PATHS
+   /usr/local/include
++  /usr/include/suitesparse
+   NO_CMAKE_SYSTEM_PATH
+ )
+ 
+ FIND_LIBRARY(CHOLMOD_LIBRARY NAMES cholmod
+   PATHS
+   /usr/local/lib
++  /usr/lib/x86_64-linux-gnu
+   NO_CMAKE_SYSTEM_PATH
+ )
+ 
+ FIND_LIBRARY(AMD_LIBRARY NAMES SHARED NAMES amd
+   PATHS
+   /usr/local/lib
++  /usr/lib/x86_64-linux-gnu
+   NO_CMAKE_SYSTEM_PATH
+ )
+ 
+ FIND_LIBRARY(CAMD_LIBRARY NAMES camd
+   PATHS
+   /usr/local/lib
++  /usr/lib/x86_64-linux-gnu
+   NO_CMAKE_SYSTEM_PATH
+ )
+ 
+ FIND_LIBRARY(SUITESPARSECONFIG_LIBRARY NAMES suitesparseconfig
+   PATHS
+   /usr/local/lib
++  /usr/lib/x86_64-linux-gnu
+   NO_CMAKE_SYSTEM_PATH
+ )
+ 
+@@ -38,11 +43,13 @@ ENDIF(CHOLMOD_INCLUDE_DIR AND CHOLMOD_LIBRARIES)
+ FIND_PATH(CSPARSE_INCLUDE_DIR NAMES cs.h
+   PATHS
+   /usr/local/include
++  /usr/include/suitesparse
+   NO_CMAKE_SYSTEM_PATH
+ )
+ 
+ FIND_LIBRARY(CSPARSE_LIBRARY NAMES cxsparse
+   PATHS
++  /usr/lib/x86_64-linux-gnu
+   /usr/local/lib
+   NO_CMAKE_SYSTEM_PATH
+ )
+@@ -51,4 +58,4 @@ IF(CSPARSE_INCLUDE_DIR AND CSPARSE_LIBRARY)
+   SET(CSPARSE_FOUND TRUE)
+ ELSE(CSPARSE_INCLUDE_DIR AND CSPARSE_LIBRARY)
+   SET(CSPARSE_FOUND FALSE)
+-ENDIF(CSPARSE_INCLUDE_DIR AND CSPARSE_LIBRARY)
+\ No newline at end of file
++ENDIF(CSPARSE_INCLUDE_DIR AND CSPARSE_LIBRARY)
