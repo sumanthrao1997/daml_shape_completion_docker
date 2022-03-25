@@ -5,5 +5,5 @@ the docker file builds all the dependencies and the repository.
 
 Building this container is straightforward using provided Makefile: ```make``` and ```make run```.
 
-# Credits
+## Credits
 I want to thank [Ignacio Vizzo](https://github.com/nachovizzo) and [Federico Magistri]() for helping me in building the dockeer file.
