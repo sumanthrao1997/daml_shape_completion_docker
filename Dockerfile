@@ -1,29 +1,33 @@
-# FROM nvidia/cuda:10.1-base-ubuntu14.04
-# FROM nvidia/cuda:8.0-cudnn7-devel-ubuntu14.04
 FROM nvidia/cuda:8.0-devel-ubuntu14.04
+LABEL maintainer="Sumanth Nagulavancha <s7sunagu@uni-bonn.de>"
 
 # setup environment
 ENV TERM xterm
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Fuck NVIDIA
+# Remove non-working NVIDIA repositories
 RUN rm /etc/apt/sources.list.d/cuda.list
 
 # Install essentials
-RUN apt-get update \
-    && apt-get install --no-install-recommends -y \
-    # nvidia-cuda-toolkit \
+RUN apt-get update && apt-get install --no-install-recommends -y \
     build-essential \
     ccache \
     cmake \
     cython \
     git \
     hdf5-tools \
+    pkg-config \
+    unzip \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install 3rdparty libraries
+RUN apt-get update && apt-get install --no-install-recommends -y \
     libatlas-base-dev \
     libavcodec-dev \
     libavformat-dev \
     libavutil-dev \
-    libboost-dev \
+    libboost-all-dev \
     libdc1394-22-dev \
     libdouble-conversion-dev \
     libexpat1-dev \
@@ -55,19 +59,10 @@ RUN apt-get update \
     libtiff-dev \
     libxml2-dev \
     libxt-dev \
-    pkg-config \
-    # python-collada \
-    # python-h5py \
-    # python-numpy \
-    # python-opencv \
     qtbase5-dev \
     qttools5-dev \
-    unzip \
-    wget \
     zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
-
-
 
 # Install lua
 RUN mkdir lua_build \
@@ -86,20 +81,33 @@ RUN wget --no-check-certificate https://luarocks.org/releases/luarocks-3.8.0.tar
     && luarocks install luasocket
 
 # Install torch distro
-RUN git clone https://github.com/torch/distro.git && cd distro && bash install-deps &&  ./install.sh && ./update.sh
+RUN git clone --depth 1 https://github.com/torch/distro.git \
+    && cd distro \
+    && bash install-deps \
+    && ./install.sh \
+    && ./update.sh \
+    && rm -rf /distro
 
 # installing additional python dependencies
-RUN apt-get install -y python-collada \
+RUN apt-get update && apt-get install --no-install-recommends -y \
+    python-collada \
+    python-dev \
     python-h5py \
     python-numpy \
-    python-opencv
+    python-opencv \
+    && rm -rf /var/lib/apt/lists/*
+
+# installing totem with edited rockspec file for git+https
+COPY totem-0-0.rockspec /
+RUN  . /distro/install/bin/torch-activate && luarocks install totem-0-0.rockspec
 
 #install torch -hd5
 RUN . /distro/install/bin/torch-activate && git clone --depth 1 https://github.com/deepmind/torch-hdf5 \
     && cd torch-hdf5 \
     && luarocks make hdf5-0-0.rockspec 
+    && rm -rf /torch-hdf5
 
-# # installing volumetric lua deps
+# installing volumetric lua deps
 RUN cd distro \
     && git clone https://github.com/davidstutz/torch-volumetric-nnup.git \
     && git clone https://github.com/clementfarabet/lua---nnx.git \ 
@@ -127,7 +135,8 @@ RUN git clone --depth 1 -b 2.4 https://github.com/opencv/opencv.git \
     && cd build \
     && cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=/usr/local .. \
     && make -j \
-    && make install
+    && make install \
+    && rm -rf /opencv
 
 #install vtk from source
 RUN wget https://www.vtk.org/files/release/7.1/VTK-7.1.1.tar.gz --no-check-certificate \
@@ -150,41 +159,41 @@ RUN rm -rf /eigen && git clone --depth 1 https://gitlab.com/libeigen/eigen.git -
     && cd build \
     && cmake .. && make -j install
 
-# installing gflags need to install thuis
+# installing gflags need to install this
 RUN git clone --depth 1 https://github.com/gflags/gflags \
     && cd gflags \
     && mkdir build \
     && cd build \
     && cmake .. \
     && make -j \
-    && make install
+    && make install \
+    && rm -rf /gflags
 
 # installing Ceres-Solver
-RUN git clone https://ceres-solver.googlesource.com/ceres-solver -b 1.14.0 \
+RUN git clone --depth 1 https://ceres-solver.googlesource.com/ceres-solver -b 1.14.0 \
     && mkdir ceres-bin \
     && cd ceres-bin \
     && cmake ../ceres-solver \
     && make -j \
-    && make install
+    && make install \
+    && rm -rf /ceres-solver
 
 # installing PyMcubes
-RUN apt update && apt upgrade -y \
-    && apt install python-dev -y \
-    && git clone --branch voxel_centers https://github.com/davidstutz/PyMCubes.git \
+RUN git clone --depth 1 --branch voxel_centers https://github.com/davidstutz/PyMCubes.git \
     && cd PyMCubes \
     && python setup.py build \
-    && python setup.py install
+    && python setup.py install \
+    && rm -rf /PyMCubes
 
 # Now finally try to build the daml shape completion
-RUN git clone --depth 1 https://github.com/davidstutz/daml-shape-completion.git \
-    # installing ,missing lua requirements (only json was missing when checked inside docker)
-    && . /distro/install/bin/torch-activate \
-    && luarocks install json
+RUN git clone --depth 1 https://github.com/davidstutz/daml-shape-completion.git
+# installing ,missing lua requirements (only json was missing when checked inside docker)
+COPY json-1.0-0.rockspec /
+RUN . /distro/install/bin/torch-activate  && luarocks install json-1.0-0.rockspec
 
-# Patch this shit
+# Patch to remove uncessary linking
 COPY engelmann.diff /daml-shape-completion/
 RUN cd daml-shape-completion && git apply engelmann.diff
-
 
 #install openblas
 RUN wget -O openblas-v0.2.20.zip http://github.com/xianyi/OpenBLAS/archive/v0.2.20.zip \
@@ -206,25 +215,16 @@ RUN ldconfig \
     && make install
 
 # building shape priors in engelmann directories
-
 RUN cd daml-shape-completion/engelmann/external/viz \
-    # && git diff .\
     && mkdir build \
     && cd build \
     && cmake .. \
     && make -j \
     && make install
 
-# TODO: Move this up or NACHO will cut my fingers
-RUN apt-get update \
-    && apt-get install --no-install-recommends -y \
-    libboost-all-dev \
-    && rm -rf /var/lib/apt/lists/*
-
 # # Patch in cmake_modules and CMakeLists to include csparse lib
 COPY engelmanncmake.diff /daml-shape-completion/
-RUN cd daml-shape-completion \
-    && git apply engelmanncmake.diff
+RUN cd daml-shape-completion && git apply engelmanncmake.diff
 
 # now come back and install the engelmann library
 RUN cd daml-shape-completion/engelmann \
@@ -245,11 +245,11 @@ RUN cd daml-shape-completion/ \
     && make -j
 
 # building shape priors
-RUN cd daml-shape-completion/ \
-    && git clone https://github.com/VisualComputingInstitute/ShapePriors_GCPR16.git
+RUN cd daml-shape-completion/ && git clone https://github.com/VisualComputingInstitute/ShapePriors_GCPR16.git
 
 # patch for correcting eigen in viz.h and cuda runtime environment off
 COPY shapeprior.diff /daml-shape-completion/ShapePriors_GCPR16/
+
 # # first build viz
 RUN cd daml-shape-completion/ShapePriors_GCPR16/ \
     && git apply shapeprior.diff \ 
@@ -268,3 +268,14 @@ RUN cd daml-shape-completion/ShapePriors_GCPR16/ \
     && cmake ..\
     && cmake .. -DCMAKE_BUILD_TYPE=Release \
     && make -j
+
+# --------------------------- FOR DEBUGGING, REMOVE LATER ------------------------------------ #
+# finally testing on data
+# downloading sn clean data
+RUN mkdir data  && cd data \
+    && wget https://datasets.d2.mpi-inf.mpg.de/cvpr2018-shape-completion/cvpr2018_shape_completion_clean.zip \
+    && unzip cvpr2018_shape_completion_clean.zip 
+
+# installing a text editor
+RUN apt update && apt install vim -y
+# edit the daml-shaape-completion/vae/clean.json file to train as required
