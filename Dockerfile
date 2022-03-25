@@ -104,7 +104,7 @@ RUN  . /distro/install/bin/torch-activate && luarocks install totem-0-0.rockspec
 #install torch -hd5
 RUN . /distro/install/bin/torch-activate && git clone --depth 1 https://github.com/deepmind/torch-hdf5 \
     && cd torch-hdf5 \
-    && luarocks make hdf5-0-0.rockspec 
+    && luarocks make hdf5-0-0.rockspec \
     && rm -rf /torch-hdf5
 
 # installing volumetric lua deps
