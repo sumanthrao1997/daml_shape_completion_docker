@@ -69,6 +69,7 @@ RUN mkdir lua_build \
     && cd lua_build \
     && wget --no-check-certificate  http://www.lua.org/ftp/lua-5.3.4.tar.gz \
     && tar -zxf lua-5.3.4.tar.gz \
+    && rm -rf  lua-5.3.4.tar.gz \
     && cd lua-5.3.4 \
     && make linux test \
     && make install
@@ -76,6 +77,7 @@ RUN mkdir lua_build \
 # Install luarocks
 RUN wget --no-check-certificate https://luarocks.org/releases/luarocks-3.8.0.tar.gz \
     && tar zxpf luarocks-3.8.0.tar.gz \
+    && rm -rf luarocks-3.8.0.tar.gz \
     && cd luarocks-3.8.0 \
     && ./configure && make && make install \
     && luarocks install luasocket
@@ -85,8 +87,8 @@ RUN git clone --depth 1 https://github.com/torch/distro.git \
     && cd distro \
     && bash install-deps \
     && ./install.sh \
-    && ./update.sh \
-    && rm -rf /distro
+    && ./update.sh 
+    # && rm -rf /distro
 
 # installing additional python dependencies
 RUN apt-get update && apt-get install --no-install-recommends -y \
@@ -109,11 +111,11 @@ RUN . /distro/install/bin/torch-activate && git clone --depth 1 https://github.c
 
 # installing volumetric lua deps
 RUN cd distro \
-    && git clone https://github.com/davidstutz/torch-volumetric-nnup.git \
-    && git clone https://github.com/clementfarabet/lua---nnx.git \ 
+    && git clone --depth 1 https://github.com/davidstutz/torch-volumetric-nnup.git \
+    && git clone --depth 1 https://github.com/clementfarabet/lua---nnx.git \ 
     && cp ./torch-volumetric-nnup/VolumetricUpSamplingNearest.lua ./lua---nnx/ \
     && cp ./torch-volumetric-nnup/generic/VolumetricUpSamplingNearest.c ./lua---nnx/generic/ \  
-    && git clone https://github.com/nicholas-leonard/cunnx.git \
+    && git clone --depth 1 https://github.com/nicholas-leonard/cunnx.git \
     && cp ./torch-volumetric-nnup/cuda/VolumetricUpSamplingNearest.cu ./cunnx/ 
 
 # installing lua--nnx
@@ -198,6 +200,7 @@ RUN cd daml-shape-completion && git apply engelmann.diff
 #install openblas
 RUN wget -O openblas-v0.2.20.zip http://github.com/xianyi/OpenBLAS/archive/v0.2.20.zip \
     && unzip openblas-v0.2.20.zip \
+    && rm -rf openblas-v0.2.20.zip \
     && cd OpenBLAS-0.2.20 \
     && mkdir build \
     && cd build \
@@ -209,6 +212,7 @@ RUN wget -O openblas-v0.2.20.zip http://github.com/xianyi/OpenBLAS/archive/v0.2.
 RUN ldconfig \
     && wget http://faculty.cse.tamu.edu/davis/SuiteSparse/SuiteSparse-4.5.6.tar.gz \
     && tar -xvzf SuiteSparse-4.5.6.tar.gz \
+    && rm -rf SuiteSparse-4.5.6.tar.gz \
     && cd SuiteSparse \
     && CUDA_PATH_='which nvcc 2>/dev/null | sed "s/\/bin\/nvcc//"' \
     && make -j \
@@ -237,7 +241,7 @@ RUN cd daml-shape-completion/engelmann \
 
 # building mesh-evaluation
 RUN cd daml-shape-completion/ \
-    && git clone https://github.com/davidstutz/mesh-evaluation.git \
+    && git clone --depth 1 https://github.com/davidstutz/mesh-evaluation.git \
     && cd mesh-evaluation \
     && mkdir build \
     && cd build \
@@ -245,7 +249,7 @@ RUN cd daml-shape-completion/ \
     && make -j
 
 # building shape priors
-RUN cd daml-shape-completion/ && git clone https://github.com/VisualComputingInstitute/ShapePriors_GCPR16.git
+RUN cd daml-shape-completion/ && git clone --depth 1 https://github.com/VisualComputingInstitute/ShapePriors_GCPR16.git
 
 # patch for correcting eigen in viz.h and cuda runtime environment off
 COPY shapeprior.diff /daml-shape-completion/ShapePriors_GCPR16/
